@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NISE SUIKA Tropical Drink Prototype</title>
+  <style>
+    :root {
+      --sky: #65cdf4;
+      --sea: #16a9d7;
+      --sand: #ffd56a;
+      --wood: #c57932;
+      --wood-dark: #7a431f;
+      --ink: #203040;
+      --panel: rgba(255, 255, 255, 0.9);
+      --accent: #ff6f9e;
+      --lime: #9bdc45;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: "Segoe UI", "Yu Gothic UI", "Meiryo", sans-serif;
+      background:
+        linear-gradient(180deg, #8fe4ff 0%, #d8f7ff 42%, #ffe38a 43%, #ffc85a 100%);
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    .app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      min-width: 320px;
+      overflow: hidden;
+    }
+
+    .beach-scene {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .sun {
+      position: absolute;
+      top: 5vh;
+      right: 8vw;
+      width: clamp(64px, 10vw, 130px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: #ffe066;
+      box-shadow: 0 0 34px rgba(255, 224, 102, 0.65);
+    }
+
+    .sea {
+      position: absolute;
+      top: 31vh;
+      left: 0;
+      width: 100%;
+      height: 13vh;
+      background:
+        repeating-linear-gradient(175deg, transparent 0 38px, rgba(255, 255, 255, 0.42) 40px 44px),
+        linear-gradient(180deg, #26c3e9, #119bd0);
+    }
+
+    .umbrella {
+      position: absolute;
+      left: 5vw;
+      top: 29vh;
+      width: clamp(100px, 16vw, 190px);
+      height: clamp(70px, 10vw, 120px);
+    }
+
+    .umbrella::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 70%;
+      border-radius: 100px 100px 12px 12px;
+      background:
+        linear-gradient(90deg, #ff6f9e 0 25%, #fff2a8 25% 50%, #2ec4b6 50% 75%, #ff9f1c 75%);
+      clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    }
+
+    .umbrella::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 56%;
+      width: 7px;
+      height: 115%;
+      background: #8b4c26;
+      transform: translateX(-50%);
+    }
+
+    .palm {
+      position: absolute;
+      right: 3vw;
+      top: 24vh;
+      width: clamp(120px, 18vw, 220px);
+      height: clamp(150px, 24vw, 285px);
+    }
+
+    .palm::before {
+      content: "";
+      position: absolute;
+      left: 47%;
+      top: 23%;
+      width: 16px;
+      height: 78%;
+      border-radius: 20px;
+      background: linear-gradient(90deg, #81512d, #c68144, #6a3e22);
+      transform: rotate(9deg);
+      transform-origin: top;
+    }
+
+    .leaf {
+      position: absolute;
+      left: 48%;
+      top: 20%;
+      width: 55%;
+      height: 18%;
+      border-radius: 100% 0;
+      background: #1eaa65;
+      transform-origin: left center;
+    }
+
+    .leaf:nth-child(1) { transform: rotate(-78deg); }
+    .leaf:nth-child(2) { transform: rotate(-38deg); background: #42c76e; }
+    .leaf:nth-child(3) { transform: rotate(6deg); }
+    .leaf:nth-child(4) { transform: rotate(45deg); background: #33b966; }
+    .leaf:nth-child(5) { transform: rotate(92deg); }
+
+    .hud {
+      position: absolute;
+      z-index: 4;
+      top: 14px;
+      left: 50%;
+      display: grid;
+      grid-template-columns: minmax(112px, auto) minmax(150px, 1fr) minmax(96px, auto);
+      gap: 10px;
+      width: min(960px, calc(100vw - 22px));
+      transform: translateX(-50%);
+      align-items: stretch;
+    }
+
+    .ticket,
+    .score-box,
+    .coin-box,
+    .controls {
+      border: 2px solid rgba(122, 67, 31, 0.25);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 6px 18px rgba(79, 47, 22, 0.16);
+    }
+
+    .score-box,
+    .coin-box {
+      display: grid;
+      place-content: center;
+      min-height: 62px;
+      padding: 8px 12px;
+      text-align: center;
+    }
+
+    .label {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0;
+      opacity: 0.7;
+    }
+
+    .value {
+      font-size: clamp(22px, 3vw, 32px);
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .ticket {
+      position: relative;
+      min-height: 62px;
+      padding: 9px 12px;
+    }
+
+    .ticket-title {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .ticket-target {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 5px;
+      font-weight: 800;
+    }
+
+    .target-icon {
+      display: inline-grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      font-size: 18px;
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.28);
+    }
+
+    canvas {
+      position: absolute;
+      z-index: 2;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    .controls {
+      position: absolute;
+      z-index: 5;
+      right: 14px;
+      bottom: 14px;
+      display: grid;
+      gap: 8px;
+      width: min(320px, calc(100vw - 28px));
+      padding: 12px;
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: 82px 1fr 46px;
+      gap: 8px;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    button {
+      min-height: 38px;
+      border: 0;
+      border-radius: 8px;
+      color: white;
+      background: #1f9bcf;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.15);
+    }
+
+    button:active {
+      transform: translateY(1px);
+      box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.12);
+    }
+
+    .fire-button {
+      display: none;
+    }
+
+    .message {
+      position: absolute;
+      z-index: 7;
+      left: 50%;
+      top: 112px;
+      min-width: 190px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: white;
+      background: rgba(32, 48, 64, 0.86);
+      text-align: center;
+      font-weight: 900;
+      opacity: 0;
+      transform: translate(-50%, -8px);
+      transition: opacity 180ms ease, transform 180ms ease;
+      pointer-events: none;
+    }
+
+    .message.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @media (max-width: 720px) {
+      .hud {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .ticket {
+        grid-column: 1 / -1;
+      }
+
+      .controls {
+        left: 14px;
+        right: 14px;
+        bottom: 84px;
+        width: auto;
+      }
+
+      .control-row {
+        grid-template-columns: 74px 1fr 42px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" aria-label="NISE SUIKA HTMLプロトタイプ">
+    <div class="beach-scene" aria-hidden="true">
+      <div class="sun"></div>
+      <div class="sea"></div>
+      <div class="umbrella"></div>
+      <div class="palm">
+        <span class="leaf"></span>
+        <span class="leaf"></span>
+        <span class="leaf"></span>
+        <span class="leaf"></span>
+        <span class="leaf"></span>
+      </div>
+    </div>
+
+    <section class="hud" aria-label="ゲーム情報">
+      <div class="score-box">
+        <div class="label">SCORE</div>
+        <div id="score" class="value">0</div>
+      </div>
+      <div class="ticket">
+        <div class="ticket-title">ORDER TICKET</div>
+        <div class="ticket-target">
+          <span id="targetIcon" class="target-icon">🍋</span>
+          <span id="targetText">レモンソーダを作る</span>
+        </div>
+      </div>
+      <div class="coin-box">
+        <div class="label">COIN</div>
+        <div id="coins" class="value">0</div>
+      </div>
+    </section>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="message" class="message" role="status" aria-live="polite"></div>
+
+    <aside class="controls" aria-label="調整パラメーター">
+      <div class="control-row">
+        <label for="gravity">重力</label>
+        <input id="gravity" type="range" min="40" max="260" step="5" value="85">
+        <output id="gravityValue">85</output>
+      </div>
+      <div class="control-row">
+        <label for="friction">摩擦</label>
+        <input id="friction" type="range" min="0.70" max="0.995" step="0.005" value="0.995">
+        <output id="frictionValue">0.995</output>
+      </div>
+      <div class="control-row">
+        <label for="launch">射出速度</label>
+        <input id="launch" type="range" min="160" max="620" step="10" value="620">
+        <output id="launchValue">620</output>
+      </div>
+      <div class="button-row">
+        <button id="resetButton" type="button">リセット</button>
+        <button id="nextButton" type="button">次を変更</button>
+      </div>
+    </aside>
+
+    <button id="fireButton" class="fire-button" type="button">発射</button>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      const scoreEl = document.getElementById("score");
+      const coinsEl = document.getElementById("coins");
+      const targetIconEl = document.getElementById("targetIcon");
+      const targetTextEl = document.getElementById("targetText");
+      const messageEl = document.getElementById("message");
+      const fireButton = document.getElementById("fireButton");
+      const resetButton = document.getElementById("resetButton");
+      const nextButton = document.getElementById("nextButton");
+
+      const gravityInput = document.getElementById("gravity");
+      const frictionInput = document.getElementById("friction");
+      const launchInput = document.getElementById("launch");
+      const gravityValue = document.getElementById("gravityValue");
+      const frictionValue = document.getElementById("frictionValue");
+      const launchValue = document.getElementById("launchValue");
+
+      const drinks = [
+        { name: "レモンソーダ", icon: "🍋", colors: ["#ffe66d", "#ff9f1c"], radius: 76, score: 10 },
+        { name: "ライムジュース", icon: "🥝", colors: ["#b8f35a", "#2ec4b6"], radius: 94, score: 25 },
+        { name: "ベリーソーダ", icon: "🍓", colors: ["#ff7aa7", "#ef476f"], radius: 110, score: 60 },
+        { name: "トロピカルジュース", icon: "🍹", colors: ["#ffbe0b", "#fb5607"], radius: 132, score: 140 },
+        { name: "ブルーハワイ", icon: "🧊", colors: ["#3a86ff", "#00bbf9"], radius: 158, score: 320 },
+        { name: "スペシャルパフェドリンク", icon: "🍨", colors: ["#c77dff", "#ffafcc"], radius: 187, score: 760 }
+      ];
+
+      const state = {
+        objects: [],
+        bursts: [],
+        nextLevel: 0,
+        targetLevel: 2,
+        score: 0,
+        coins: 0,
+        launcherX: 0,
+        isPointerDown: false,
+        lastTime: performance.now(),
+        field: { x: 0, y: 0, w: 0, h: 0 },
+        frontY: 0,
+        backY: 0,
+        launchCooldown: 0
+      };
+
+      const params = {
+        gravity: Number(gravityInput.value),
+        friction: Number(frictionInput.value),
+        launchSpeed: Number(launchInput.value)
+      };
+
+      function resize() {
+        const ratio = window.devicePixelRatio || 1;
+        canvas.width = Math.floor(window.innerWidth * ratio);
+        canvas.height = Math.floor(window.innerHeight * ratio);
+        canvas.style.width = `${window.innerWidth}px`;
+        canvas.style.height = `${window.innerHeight}px`;
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+        const marginX = Math.max(22, window.innerWidth * 0.11);
+        const top = Math.max(122, window.innerHeight * 0.17);
+        const bottom = window.innerWidth < 720 ? 196 : 96;
+        state.field = {
+          x: marginX,
+          y: top,
+          w: window.innerWidth - marginX * 2,
+          h: Math.max(260, window.innerHeight - top - bottom)
+        };
+        state.frontY = state.field.y + state.field.h - 18;
+        state.backY = state.field.y + 34;
+        state.launcherX = clamp(state.launcherX || window.innerWidth / 2, state.field.x + 28, state.field.x + state.field.w - 28);
+      }
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function randomNextLevel() {
+        const roll = Math.random();
+        if (roll > 0.88) return 2;
+        if (roll > 0.58) return 1;
+        return 0;
+      }
+
+      function resetGame() {
+        state.objects = [];
+        state.bursts = [];
+        state.nextLevel = randomNextLevel();
+        state.targetLevel = 2 + Math.floor(Math.random() * 3);
+        state.score = 0;
+        state.coins = 0;
+        state.launchCooldown = 0;
+        updateHud();
+        showMessage("新しい注文が入りました");
+      }
+
+      function updateHud() {
+        scoreEl.textContent = String(state.score);
+        coinsEl.textContent = String(state.coins);
+        const target = drinks[state.targetLevel];
+        targetIconEl.textContent = target.icon;
+        targetIconEl.style.background = `linear-gradient(135deg, ${target.colors[0]}, ${target.colors[1]})`;
+        targetTextEl.textContent = `${target.name}を作る`;
+      }
+
+      function showMessage(text) {
+        messageEl.textContent = text;
+        messageEl.classList.add("show");
+        window.clearTimeout(showMessage.timer);
+        showMessage.timer = window.setTimeout(() => messageEl.classList.remove("show"), 1300);
+      }
+
+      function launchDrink() {
+        if (state.launchCooldown > 0) return;
+        const spec = drinks[state.nextLevel];
+        const spawn = launchSpawnPoint(spec.radius);
+        const direction = stageForwardVectorAt(spawn.x, spawn.y);
+        state.objects.push({
+          id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+          x: spawn.x,
+          y: spawn.y,
+          vx: direction.x * params.launchSpeed,
+          vy: direction.y * params.launchSpeed,
+          level: state.nextLevel,
+          radius: spec.radius,
+          merged: false,
+          age: 0
+        });
+        state.nextLevel = randomNextLevel();
+        state.launchCooldown = 0.22;
+      }
+
+      function launchSpawnPoint(radius) {
+        const y = state.frontY + 18 - radius;
+        const bounds = laneBoundsAtY(y);
+        return {
+          x: clamp(state.launcherX, bounds.left + radius, bounds.right - radius),
+          y
+        };
+      }
+
+      function updateParams() {
+        params.gravity = Number(gravityInput.value);
+        params.friction = Number(frictionInput.value);
+        params.launchSpeed = Number(launchInput.value);
+        gravityValue.textContent = gravityInput.value;
+        frictionValue.textContent = frictionInput.value;
+        launchValue.textContent = launchInput.value;
+      }
+
+      function update(dt) {
+        state.launchCooldown = Math.max(0, state.launchCooldown - dt);
+        const drag = Math.pow(params.friction, dt * 60);
+
+        for (const obj of state.objects) {
+          obj.age += dt;
+          const direction = stageForwardVectorAt(obj.x, obj.y);
+          obj.vx += direction.x * params.gravity * dt;
+          obj.vy += direction.y * params.gravity * dt;
+          obj.vx *= drag;
+          obj.vy *= drag;
+          obj.x += obj.vx * dt;
+          obj.y += obj.vy * dt;
+          collideWalls(obj);
+        }
+
+        for (let i = 0; i < 3; i += 1) {
+          solveObjectCollisions();
+        }
+
+        state.objects = state.objects.filter((obj) => !obj.merged);
+        for (const burst of state.bursts) {
+          burst.life -= dt;
+        }
+        state.bursts = state.bursts.filter((burst) => burst.life > 0);
+      }
+
+      function collideWalls(obj) {
+        const bounds = laneBoundsAtY(obj.y);
+        const radius = collisionRadius(obj);
+        if (obj.x - radius < bounds.left) {
+          obj.x = bounds.left + radius;
+          obj.vx = Math.abs(obj.vx) * 0.36;
+        }
+        if (obj.x + radius > bounds.right) {
+          obj.x = bounds.right - radius;
+          obj.vx = -Math.abs(obj.vx) * 0.36;
+        }
+        if (obj.y + radius > state.frontY + 18) {
+          obj.y = state.frontY + 18 - radius;
+          obj.vy = -Math.abs(obj.vy) * 0.2;
+        }
+        if (obj.y - radius < state.backY) {
+          obj.y = state.backY + radius;
+          obj.vy = Math.abs(obj.vy) * 0.13;
+          obj.vx *= 0.82;
+          if (Math.abs(obj.vy) < 16) obj.vy = 0;
+        }
+      }
+
+      function perspectiveProgress(y) {
+        const travel = Math.max(1, state.frontY - state.backY);
+        return clamp((state.frontY - y) / travel, 0, 1);
+      }
+
+      function perspectiveScale(y) {
+        return 1 - perspectiveProgress(y) * 0.58;
+      }
+
+      function laneBoundsAtY(y) {
+        const f = state.field;
+        const progress = perspectiveProgress(y);
+        const farInset = f.w * 0.34;
+        return {
+          left: f.x + farInset * progress,
+          right: f.x + f.w - farInset * progress
+        };
+      }
+
+      function lanePositionAtY(x, y) {
+        const bounds = laneBoundsAtY(y);
+        const width = Math.max(1, bounds.right - bounds.left);
+        return clamp((x - bounds.left) / width, 0, 1);
+      }
+
+      function laneXAtProgress(t, progress) {
+        const f = state.field;
+        const farInset = f.w * 0.34;
+        const nearLeft = f.x;
+        const nearRight = f.x + f.w;
+        const farLeft = f.x + farInset;
+        const farRight = f.x + f.w - farInset;
+        const left = nearLeft + (farLeft - nearLeft) * progress;
+        const right = nearRight + (farRight - nearRight) * progress;
+        return left + (right - left) * t;
+      }
+
+      function stageForwardVectorAt(x, y) {
+        const t = lanePositionAtY(x, y);
+        const fromProgress = perspectiveProgress(y);
+        const toProgress = clamp(fromProgress + 0.18, 0, 1);
+        const fromX = laneXAtProgress(t, fromProgress);
+        const toX = laneXAtProgress(t, toProgress);
+        const toY = state.frontY - toProgress * (state.frontY - state.backY);
+        const dx = toX - fromX;
+        const dy = toY - y;
+        const length = Math.hypot(dx, dy) || 1;
+        return {
+          x: dx / length,
+          y: dy / length
+        };
+      }
+
+      function collisionRadius(obj) {
+        return obj.radius * perspectiveScale(obj.y);
+      }
+
+      function solveObjectCollisions() {
+        for (let i = 0; i < state.objects.length; i += 1) {
+          const a = state.objects[i];
+          if (a.merged) continue;
+          for (let j = i + 1; j < state.objects.length; j += 1) {
+            const b = state.objects[j];
+            if (b.merged) continue;
+
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const distance = Math.hypot(dx, dy) || 0.001;
+            const aRadius = collisionRadius(a);
+            const bRadius = collisionRadius(b);
+            const minDistance = aRadius + bRadius;
+            if (distance >= minDistance) continue;
+
+            if (a.level === b.level && a.level < drinks.length - 1) {
+              mergeObjects(a, b);
+              break;
+            }
+
+            const nx = dx / distance;
+            const ny = dy / distance;
+            const overlap = minDistance - distance;
+            a.x -= nx * overlap * 0.5;
+            a.y -= ny * overlap * 0.5;
+            b.x += nx * overlap * 0.5;
+            b.y += ny * overlap * 0.5;
+
+            const relVx = b.vx - a.vx;
+            const relVy = b.vy - a.vy;
+            const impact = relVx * nx + relVy * ny;
+            if (impact < 0) {
+              const impulse = impact * -0.42;
+              a.vx -= impulse * nx;
+              a.vy -= impulse * ny;
+              b.vx += impulse * nx;
+              b.vy += impulse * ny;
+            }
+
+            collideWalls(a);
+            collideWalls(b);
+          }
+        }
+      }
+
+      function mergeObjects(a, b) {
+        const nextLevel = a.level + 1;
+        const spec = drinks[nextLevel];
+        const x = (a.x + b.x) / 2;
+        const y = (a.y + b.y) / 2;
+        a.merged = true;
+        b.merged = true;
+        state.objects.push({
+          id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+          x,
+          y,
+          vx: (a.vx + b.vx) * 0.18,
+          vy: (a.vy + b.vy) * 0.18 - 34,
+          level: nextLevel,
+          radius: spec.radius,
+          merged: false,
+          age: 0
+        });
+        state.bursts.push({ x, y, level: nextLevel, life: 0.45, maxLife: 0.45 });
+        state.score += spec.score;
+
+        if (nextLevel === state.targetLevel) {
+          state.coins += 1 + nextLevel;
+          state.score += spec.score;
+          state.targetLevel = 2 + Math.floor(Math.random() * 3);
+          showMessage(`${spec.name} 完成!`);
+        }
+        updateHud();
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        drawTable();
+        drawLauncher();
+        drawObjects();
+        drawBursts();
+        drawNextPreview();
+      }
+
+      function drawTable() {
+        const f = state.field;
+        const farInset = f.w * 0.34;
+        const nearLeft = f.x;
+        const nearRight = f.x + f.w;
+        const farLeft = f.x + farInset;
+        const farRight = f.x + f.w - farInset;
+        ctx.save();
+        ctx.shadowColor = "rgba(80, 45, 16, 0.28)";
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetY = 12;
+        tablePath(nearLeft - 18, nearRight + 18, farLeft - 10, farRight + 10, state.backY - 22, state.frontY + 28);
+        ctx.fillStyle = "#8a4d24";
+        ctx.fill();
+        ctx.restore();
+
+        const grad = ctx.createLinearGradient(0, f.y, 0, f.y + f.h);
+        grad.addColorStop(0, "#d89243");
+        grad.addColorStop(0.48, "#b8682f");
+        grad.addColorStop(1, "#8a4d24");
+        tablePath(nearLeft, nearRight, farLeft, farRight, state.backY, state.frontY);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        ctx.save();
+        ctx.clip();
+        ctx.strokeStyle = "rgba(255, 225, 156, 0.38)";
+        ctx.lineWidth = 3;
+        for (let i = 0; i <= 9; i += 1) {
+          const nearX = nearLeft + (f.w / 9) * i;
+          const farX = farLeft + ((farRight - farLeft) / 9) * i;
+          ctx.beginPath();
+          ctx.moveTo(farX, state.backY);
+          ctx.lineTo(nearX, state.frontY);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = "rgba(255, 244, 207, 0.32)";
+        ctx.lineWidth = 2;
+        for (let i = 1; i <= 7; i += 1) {
+          const progress = i / 8;
+          const y = state.frontY - Math.pow(progress, 1.7) * (state.frontY - state.backY);
+          const bounds = laneBoundsAtY(y);
+          ctx.beginPath();
+          ctx.moveTo(bounds.left, y);
+          ctx.lineTo(bounds.right, y);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        ctx.fillStyle = "#633719";
+        roundedRect(farLeft - 22, state.backY - 58, farRight - farLeft + 44, 72, 10);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255, 218, 132, 0.3)";
+        roundedRect(farLeft - 10, state.backY - 44, farRight - farLeft + 20, 12, 6);
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(255,255,255,0.55)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 10]);
+        ctx.beginPath();
+        ctx.moveTo(nearLeft + 18, state.frontY);
+        ctx.lineTo(nearRight - 18, state.frontY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      function drawLauncher() {
+        const x = state.launcherX;
+        const y = state.frontY + 42;
+        const direction = stageForwardVectorAt(x, state.frontY + 18 - drinks[state.nextLevel].radius);
+        const angle = Math.atan2(direction.y, direction.x) + Math.PI / 2;
+        ctx.save();
+        ctx.fillStyle = "#2ec4b6";
+        roundedRect(x - 36, y - 15, 72, 30, 8);
+        ctx.fill();
+        ctx.translate(x, y - 36);
+        ctx.rotate(angle);
+        ctx.fillStyle = "#203040";
+        ctx.fillRect(-6, -10, 12, 44);
+        ctx.fillStyle = "#fff2a8";
+        ctx.beginPath();
+        ctx.moveTo(0, -22);
+        ctx.lineTo(-13, 0);
+        ctx.lineTo(13, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawObjects() {
+        const ordered = [...state.objects].sort((a, b) => a.y - b.y);
+        for (const obj of ordered) {
+          const spec = drinks[obj.level];
+          const radius = collisionRadius(obj);
+          const grad = ctx.createRadialGradient(obj.x - radius * 0.3, obj.y - radius * 0.35, 2, obj.x, obj.y, radius);
+          grad.addColorStop(0, "#ffffff");
+          grad.addColorStop(0.16, spec.colors[0]);
+          grad.addColorStop(1, spec.colors[1]);
+
+          ctx.save();
+          ctx.shadowColor = "rgba(42, 24, 12, 0.34)";
+          ctx.shadowBlur = 9;
+          ctx.shadowOffsetY = 5;
+          ctx.beginPath();
+          ctx.arc(obj.x, obj.y, radius, 0, Math.PI * 2);
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = "rgba(255,255,255,0.72)";
+          ctx.stroke();
+          ctx.shadowColor = "transparent";
+          ctx.font = `${Math.max(16, radius * 0.86)}px "Segoe UI Emoji", sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(spec.icon, obj.x, obj.y + 1);
+          ctx.restore();
+        }
+      }
+
+      function drawBursts() {
+        for (const burst of state.bursts) {
+          const progress = 1 - burst.life / burst.maxLife;
+          const alpha = Math.max(0, 1 - progress);
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.strokeStyle = drinks[burst.level].colors[0];
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(burst.x, burst.y, 22 + progress * 46, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = "rgba(255,255,255,0.9)";
+          ctx.font = "900 18px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("MIX!", burst.x, burst.y - 34 - progress * 14);
+          ctx.restore();
+        }
+      }
+
+      function drawNextPreview() {
+        const spec = drinks[state.nextLevel];
+        const x = state.launcherX;
+        const y = state.frontY + 4;
+        ctx.save();
+        ctx.globalAlpha = 0.96;
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        roundedRect(x - 54, y - 24, 108, 48, 8);
+        ctx.fill();
+        ctx.fillStyle = "#203040";
+        ctx.font = "800 11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("NEXT", x, y - 8);
+        ctx.font = "24px 'Segoe UI Emoji', sans-serif";
+        ctx.fillText(spec.icon, x, y + 14);
+        ctx.restore();
+      }
+
+      function roundedRect(x, y, w, h, r) {
+        const rr = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + rr, y);
+        ctx.arcTo(x + w, y, x + w, y + h, rr);
+        ctx.arcTo(x + w, y + h, x, y + h, rr);
+        ctx.arcTo(x, y + h, x, y, rr);
+        ctx.arcTo(x, y, x + w, y, rr);
+        ctx.closePath();
+      }
+
+      function tablePath(nearLeft, nearRight, farLeft, farRight, farY, nearY) {
+        ctx.beginPath();
+        ctx.moveTo(farLeft, farY);
+        ctx.lineTo(farRight, farY);
+        ctx.lineTo(nearRight, nearY);
+        ctx.lineTo(nearLeft, nearY);
+        ctx.closePath();
+      }
+
+      function setLauncherFromClientX(clientX) {
+        state.launcherX = clamp(clientX, state.field.x + 28, state.field.x + state.field.w - 28);
+      }
+
+      function onPointerDown(event) {
+        state.isPointerDown = true;
+        setLauncherFromClientX(event.clientX);
+      }
+
+      function onPointerMove(event) {
+        if (!state.isPointerDown && event.pointerType !== "mouse") return;
+        setLauncherFromClientX(event.clientX);
+      }
+
+      function onPointerUp(event) {
+        if (state.isPointerDown) {
+          setLauncherFromClientX(event.clientX);
+        }
+        state.isPointerDown = false;
+      }
+
+      function loop(now) {
+        const dt = Math.min(0.033, (now - state.lastTime) / 1000);
+        state.lastTime = now;
+        update(dt);
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      window.addEventListener("resize", resize);
+      canvas.addEventListener("pointerdown", onPointerDown);
+      canvas.addEventListener("pointermove", onPointerMove);
+      canvas.addEventListener("pointerup", onPointerUp);
+      canvas.addEventListener("pointercancel", onPointerUp);
+      canvas.addEventListener("click", (event) => {
+        const isGameFieldClick = event.clientY >= state.backY && event.clientY <= state.frontY + 60;
+        if (isGameFieldClick) {
+          setLauncherFromClientX(event.clientX);
+          launchDrink();
+        }
+      });
+
+      fireButton.addEventListener("click", launchDrink);
+      resetButton.addEventListener("click", resetGame);
+      nextButton.addEventListener("click", () => {
+        state.nextLevel = randomNextLevel();
+      });
+
+      for (const input of [gravityInput, frictionInput, launchInput]) {
+        input.addEventListener("input", updateParams);
+      }
+
+      window.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowLeft") {
+          state.launcherX = clamp(state.launcherX - 26, state.field.x + 28, state.field.x + state.field.w - 28);
+        } else if (event.key === "ArrowRight") {
+          state.launcherX = clamp(state.launcherX + 26, state.field.x + 28, state.field.x + state.field.w - 28);
+        } else if (event.code === "Space") {
+          event.preventDefault();
+          launchDrink();
+        }
+      });
+
+      resize();
+      updateParams();
+      resetGame();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
