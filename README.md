@@ -9,7 +9,7 @@
 GitHub Pagesで公開する場合は、リポジトリのPages設定を有効化したあと、以下の形式でアクセスできます。
 
 ```text
-https://<GitHubユーザー名>.github.io/<リポジトリ名>/
+https://karser4423.github.io/NISE_SUIKA/index.html
 ```
 
 トップページは `index.html` です。
