@@ -6,7 +6,7 @@
 
 ## 公開ページ
 
-GitHub Pagesで公開する場合は、リポジトリのPages設定を有効化したあと、以下の形式でアクセスできます。
+GitHub Pagesで公開しており、スマートフォンで以下にアクセスするとプレイ可能です。
 
 ```text
 https://karser4423.github.io/NISE_SUIKA/index.html
