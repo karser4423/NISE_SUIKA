@@ -561,10 +561,10 @@
           <div id="score" class="value">0</div>
         </div>
         <div class="coin-box">
-          <div class="label">COIN</div>
+          <div class="label">売上</div>
           <div id="coins" class="value">0</div>
         </div>
-        <div class="stat-pill">SHOT<span id="shotStat">0</span></div>
+        <div class="stat-pill">作成数<span id="shotStat">0</span></div>
         <div class="stat-pill">TIME<span id="timeStat">0.0</span></div>
       </div>
       <div class="hud-group evolution-panel" aria-label="進化情報">
@@ -575,7 +575,7 @@
       </div>
       <div class="hud-group icon-panel" aria-label="アイコン情報">
         <div class="ticket">
-          <div class="ticket-title">ORDER TICKET</div>
+          <div class="ticket-title">注文</div>
           <div class="ticket-target">
             <span id="targetIcon" class="target-icon">🍋</span>
             <span id="targetText">レモンソーダ</span>
@@ -705,6 +705,7 @@
       farWidth: 4.8,
       launchProgress: 0.25
     };
+    const safetyStageFullObjectLimit = 100;
 
     const drinks = [
       { name: "レモンソーダ", icon: "🍋", colors: [0xffe66d, 0xff9f1c], radius: 0.34, height: 0.42, score: 10 },
@@ -967,6 +968,7 @@
       state.heldLevel = null;
       state.launchCooldown = 0;
       updateHud();
+      syncOrderHighlights();
       updateLauncher();
     }
 
@@ -988,10 +990,9 @@
       setDrinkIcon(nextPreviewEl, state.upcomingLevel);
       nextNameEl.textContent = next.name;
       const target = drinks[state.targetLevel];
-      setDrinkIcon(targetIconEl, state.targetLevel);
+      setDrinkIcon(targetIconEl, currentOrderLevel());
       const mode = modes[state.modeId];
       if (state.scene === "play" && (state.modeId === "evolutionShots" || state.modeId === "evolutionTime")) {
-        setDrinkIcon(targetIconEl, drinks.length - 1);
         targetTextEl.textContent = drinks[drinks.length - 1].name;
       } else {
         targetTextEl.textContent = target.name;
@@ -1208,6 +1209,13 @@
       return `#${color.toString(16).padStart(6, "0")}`;
     }
 
+    function currentOrderLevel() {
+      if (state.scene === "play" && (state.modeId === "evolutionShots" || state.modeId === "evolutionTime")) {
+        return drinks.length - 1;
+      }
+      return state.targetLevel;
+    }
+
     function showMessage(text) {
       messageEl.textContent = text;
       messageEl.classList.add("show");
@@ -1270,7 +1278,7 @@
     }
 
     function isStageFull() {
-      if (state.objects.length >= 24) return true;
+      if (state.objects.length >= safetyStageFullObjectLimit) return true;
       const frontLimit = stageFullLineZ();
       let blockers = 0;
       for (const obj of state.objects) {
@@ -1305,6 +1313,7 @@
         height: spec.height,
         merged: false
       });
+      registerObjectMesh(state.objects[state.objects.length - 1]);
 
       if (level === state.nextLevel) {
         state.nextLevel = state.upcomingLevel;
@@ -1312,8 +1321,15 @@
       }
       state.shots += 1;
       state.launchCooldown = 0.22;
+      syncOrderHighlights();
       updateHud();
       updateLauncher();
+    }
+
+    function registerObjectMesh(obj) {
+      obj.mesh.traverse((child) => {
+        child.userData.gameObject = obj;
+      });
     }
 
     function createDrinkMesh(level, options = {}) {
@@ -1549,6 +1565,7 @@
       for (const obj of state.objects) {
         obj.mesh.position.set(obj.x, obj.height / 2, obj.z);
       }
+      syncOrderHighlights();
       updateLauncher();
       updateHud();
       checkGameEndConditions();
@@ -1633,20 +1650,6 @@
       scene.remove(b.mesh);
 
       state.score += spec.score;
-      if (nextLevel === drinks.length - 1) {
-        state.coins += 10;
-        showMessage(`${spec.name} 完成!`);
-        if (nextLevel === state.targetLevel) {
-          state.score += spec.score;
-          state.targetLevel = randomTargetLevel();
-        }
-        updateHud();
-        if (state.modeId === "evolutionShots" || state.modeId === "evolutionTime") {
-          endGame("clear");
-        }
-        return;
-      }
-
       const mesh = createDrinkMesh(nextLevel);
       mesh.position.set(x, spec.height / 2, z);
       scene.add(mesh);
@@ -1661,16 +1664,112 @@
         height: spec.height,
         merged: false
       });
+      registerObjectMesh(state.objects[state.objects.length - 1]);
 
-      if (nextLevel === state.targetLevel) {
-        state.coins += 1 + nextLevel;
-        state.score += state.modeId === "orderRush" ? spec.score * 3 : spec.score;
-        state.targetLevel = randomTargetLevel();
+      if (nextLevel === drinks.length - 1) {
+        state.coins += 10;
         showMessage(`${spec.name} 完成!`);
       } else {
         showMessage("MIX!");
       }
+      syncOrderHighlights();
       updateHud();
+      if (nextLevel === drinks.length - 1 && (state.modeId === "evolutionShots" || state.modeId === "evolutionTime")) {
+        endGame("clear");
+      }
+    }
+
+    function serveOrderObject(obj) {
+      if (!obj || obj.level !== currentOrderLevel() || obj.merged) return false;
+      const spec = drinks[obj.level];
+      obj.merged = true;
+      scene.remove(obj.mesh);
+      state.objects = state.objects.filter((item) => item !== obj);
+      state.score += spec.score;
+      state.coins += orderRevenueForLevel(obj.level);
+      if (obj.level === state.targetLevel) {
+        state.targetLevel = randomTargetLevel();
+      }
+      showMessage(`${spec.name} 提供!`);
+      syncOrderHighlights();
+      updateHud();
+      return true;
+    }
+
+    function orderRevenueForLevel(level) {
+      const stage = level + 1;
+      return 1 + stage * stage;
+    }
+
+    function syncOrderHighlights() {
+      const orderLevel = currentOrderLevel();
+      for (const obj of state.objects) {
+        const shouldHighlight = obj.level === orderLevel && !obj.merged;
+        if (shouldHighlight && !obj.orderHighlight) {
+          obj.orderHighlight = createOrderHighlight(obj);
+          obj.mesh.add(obj.orderHighlight);
+        } else if (!shouldHighlight && obj.orderHighlight) {
+          obj.mesh.remove(obj.orderHighlight);
+          obj.orderHighlight = null;
+        }
+      }
+    }
+
+    function createOrderHighlight(obj) {
+      const group = new THREE.Group();
+      group.name = "orderHighlight";
+      const ringMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 1,
+        depthTest: false
+      });
+      const topRing = new THREE.Mesh(new THREE.TorusGeometry(obj.radius * 1.24, 0.055, 12, 64), ringMaterial.clone());
+      topRing.position.y = obj.height / 2 + 0.1;
+      topRing.rotation.x = Math.PI / 2;
+      const middleRing = new THREE.Mesh(new THREE.TorusGeometry(obj.radius * 1.18, 0.045, 12, 64), ringMaterial.clone());
+      middleRing.position.y = 0;
+      middleRing.rotation.x = Math.PI / 2;
+      const bottomRing = new THREE.Mesh(new THREE.TorusGeometry(obj.radius * 1.08, 0.045, 12, 64), ringMaterial.clone());
+      bottomRing.position.y = -obj.height / 2 + 0.08;
+      bottomRing.rotation.x = Math.PI / 2;
+      group.add(topRing, middleRing, bottomRing);
+      group.userData.hueOffset = Math.random();
+      return group;
+    }
+
+    function updateOrderHighlights(now) {
+      const hueBase = (now * 0.00018) % 1;
+      for (const obj of state.objects) {
+        if (!obj.orderHighlight) continue;
+        obj.orderHighlight.rotation.y += 0.03;
+        obj.orderHighlight.children.forEach((child, index) => {
+          child.material.color.setHSL((hueBase + obj.orderHighlight.userData.hueOffset + index * 0.18) % 1, 1, 0.52);
+        });
+      }
+    }
+
+    function pickServableObject(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const intersects = raycaster.intersectObjects(state.objects.map((obj) => obj.mesh), true);
+      const orderLevel = currentOrderLevel();
+      for (const hit of intersects) {
+        const obj = findHitGameObject(hit.object);
+        if (obj && obj.level === orderLevel && !obj.merged) return obj;
+      }
+      return null;
+    }
+
+    function findHitGameObject(mesh) {
+      let current = mesh;
+      while (current) {
+        if (current.userData.gameObject) return current.userData.gameObject;
+        current = current.parent;
+      }
+      return null;
     }
 
     function randomTargetLevel() {
@@ -1821,6 +1920,7 @@
       const dt = Math.min(0.033, (now - state.lastTime) / 1000);
       state.lastTime = now;
       update(dt);
+      updateOrderHighlights(now);
       renderer.render(scene, camera);
       requestAnimationFrame(loop);
     }
@@ -1839,6 +1939,8 @@
     window.addEventListener("resize", resize);
     canvas.addEventListener("pointerdown", (event) => {
       if (state.scene !== "play" || state.gameEnded || state.launchCooldown > 0) return;
+      const servableObject = pickServableObject(event.clientX, event.clientY);
+      if (servableObject && serveOrderObject(servableObject)) return;
       if (canvas.setPointerCapture) {
         canvas.setPointerCapture(event.pointerId);
       }
