@@ -752,6 +752,7 @@
       modeId: "endless",
       objects: [],
       nextLevel: 0,
+      upcomingLevel: 0,
       targetLevel: 2,
       score: 0,
       coins: 0,
@@ -956,6 +957,7 @@
       }
       state.objects = [];
       state.nextLevel = randomNextLevel();
+      state.upcomingLevel = randomNextLevel();
       state.targetLevel = randomTargetLevel();
       state.score = 0;
       state.coins = 0;
@@ -982,8 +984,8 @@
     function updateHud() {
       scoreEl.textContent = String(state.score);
       coinsEl.textContent = String(state.coins);
-      const next = drinks[state.nextLevel];
-      setDrinkIcon(nextPreviewEl, state.nextLevel);
+      const next = drinks[state.upcomingLevel];
+      setDrinkIcon(nextPreviewEl, state.upcomingLevel);
       nextNameEl.textContent = next.name;
       const target = drinks[state.targetLevel];
       setDrinkIcon(targetIconEl, state.targetLevel);
@@ -1305,7 +1307,8 @@
       });
 
       if (level === state.nextLevel) {
-        state.nextLevel = randomNextLevel();
+        state.nextLevel = state.upcomingLevel;
+        state.upcomingLevel = randomNextLevel();
       }
       state.shots += 1;
       state.launchCooldown = 0.22;
@@ -1868,7 +1871,9 @@
     nextButton.addEventListener("click", () => {
       if (state.scene !== "play") return;
       state.nextLevel = randomNextLevel();
+      state.upcomingLevel = randomNextLevel();
       updateLauncher();
+      updateHud();
     });
 
     startButton.addEventListener("click", () => setScene("mode"));
