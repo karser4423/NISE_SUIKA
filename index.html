@@ -171,13 +171,21 @@
       font-weight: 900;
     }
 
-    .ticket-target {
+    .ticket-target,
+    .next-target {
       display: flex;
       gap: 8px;
       align-items: center;
-      margin-top: 3px;
       font-size: 12px;
       font-weight: 800;
+    }
+
+    .ticket-target span:last-child,
+    .next-target span:last-child {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .target-icon {
@@ -236,7 +244,7 @@
       position: absolute;
       z-index: 7;
       left: 50%;
-      top: clamp(236px, 24svh, 280px);
+      top: clamp(270px, 32svh, 320px);
       min-width: 156px;
       padding: 8px 12px;
       border-radius: 8px;
@@ -428,9 +436,8 @@
     }
 
     .next-drink {
-      display: flex;
-      gap: 8px;
-      align-items: center;
+      display: grid;
+      gap: 3px;
       font-size: 11px;
       font-weight: 900;
     }
@@ -527,11 +534,6 @@
       }
     }
 
-    @media (max-width: 420px) {
-      .icon-panel {
-        grid-template-columns: 1fr;
-      }
-    }
   </style>
 </head>
 <body>
@@ -576,13 +578,15 @@
           <div class="ticket-title">ORDER TICKET</div>
           <div class="ticket-target">
             <span id="targetIcon" class="target-icon">🍋</span>
-            <span id="targetText">レモンソーダを作る</span>
+            <span id="targetText">レモンソーダ</span>
           </div>
         </div>
         <div class="next-drink" aria-label="次に発生するドリンク">
           <span class="label">NEXT</span>
-          <span id="nextPreview" class="next-preview">🍋</span>
-          <span id="nextName" class="next-name">レモンソーダ</span>
+          <div class="next-target">
+            <span id="nextPreview" class="next-preview">🍋</span>
+            <span id="nextName" class="next-name">レモンソーダ</span>
+          </div>
         </div>
       </div>
     </section>
@@ -980,17 +984,15 @@
       coinsEl.textContent = String(state.coins);
       const next = drinks[state.nextLevel];
       setDrinkIcon(nextPreviewEl, state.nextLevel);
-      nextNameEl.textContent = `${state.nextLevel + 1}段階目 ${next.name}`;
+      nextNameEl.textContent = next.name;
       const target = drinks[state.targetLevel];
       setDrinkIcon(targetIconEl, state.targetLevel);
       const mode = modes[state.modeId];
       if (state.scene === "play" && (state.modeId === "evolutionShots" || state.modeId === "evolutionTime")) {
         setDrinkIcon(targetIconEl, drinks.length - 1);
-        targetTextEl.textContent = `${drinks[drinks.length - 1].name}を作る`;
-      } else if (state.scene === "title" || state.scene === "mode") {
-        targetTextEl.textContent = mode.goalText;
+        targetTextEl.textContent = drinks[drinks.length - 1].name;
       } else {
-        targetTextEl.textContent = `${target.name}を作る`;
+        targetTextEl.textContent = target.name;
       }
       modeStatEl.textContent = mode.name;
       shotStatEl.textContent = String(state.shots);
